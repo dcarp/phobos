@@ -321,6 +321,78 @@ template not(alias pred)
 }
 
 /**
+   If $(D !!value) is $(D true), layzily evaluates and returns argument $(D a)
+   If $(D !!value) is $(D false), layzily evaluate and returns argument $(D b) when present,
+     otherwise $(D typeof(a).init)
+ */
+auto when(T, E1, E2)(lazy E1 a, T value, lazy E2 b)
+if (is(typeof({ if (!value) {} })) && is(typeof(true ? a : b)))
+{
+    return !value ? b : a;
+}
+
+auto when(T, E1)(lazy E1 a, T value)
+if (is(typeof({ if (!value) {} })))
+{
+    return !value ? E1.init : a;
+}
+
+auto when(T, E1 : void)(lazy E1 a, T value)
+if (is(typeof({ if (!value) {} })))
+{
+    return !value ? 0 : a;
+}
+
+/**
+   If $(D !!value) is $(D false), layzily evaluates and returns argument $(D a)
+   If $(D !!value) is $(D true), layzily evaluate and returns argument $(D b) when present,
+     otherwise $(D typeof(a).init)
+ */
+auto unless(T, E1, E2 = E1)(lazy E1 a, T value, lazy E2 b)
+if (is(typeof({ if (!value) {} })) && is(typeof(true ? a : b)))
+{
+    return !value ? a : b;
+}
+
+auto unless(T, E1)(lazy E1 a, T value)
+if (is(typeof({ if (!value) {} })))
+{
+    return !value ? a : E1.init;
+}
+
+auto unless(T, E1 : void)(lazy E1 a, T value)
+if (is(typeof({ if (!value) {} })))
+{
+    return !value ? a : 0;
+}
+
+unittest
+{
+    assert(10.when(true) == 10);
+    assert(10.when(false) == int.init);
+    assert(10.unless(true) == int.init);
+    assert(10.unless(false) == 10);
+
+    assert(10.when(true, 5) == 10);
+    assert(10.when(false, 5) == 5);
+    assert(10.unless(true, 5) == 5);
+    assert(10.unless(false, 5) == 10);
+
+    bool i1; void fun1() { i1 = true; }
+    bool i2; void fun2() { i2 = true; }
+
+    i1 = false; fun1.when(true); assert(i1);
+    i1 = false; fun1.when(false); assert(!i1);
+    i1 = false; fun1.unless(true); assert(!i1);
+    i1 = false; fun1.unless(false); assert(i1);
+
+    i1 = i2 = false; fun1.when(true, fun2); assert(i1 && !i2);
+    i1 = i2 = false; fun1.when(false, fun2); assert(!i1 && i2);
+    i1 = i2 = false; fun1.unless(true, fun2); assert(!i1 && i2);
+    i1 = i2 = false; fun1.unless(false, fun2); assert(i1 && !i2);
+}
+
+/**
 Partially evaluates $(D fun) by tying its first argument to a particular value.
 
 Example:
